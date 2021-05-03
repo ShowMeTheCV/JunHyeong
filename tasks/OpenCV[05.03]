@@ -1,0 +1,1008 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 이미지 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-이미지 검출은 영상 내에사 주요한 특징점(Feature Point)을 검출하는 방법으로서, 특징점이 존재하는 위치를 알려주거나 해당 특징점을 부각한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-가장자리(Edge) 검출   \n",
+    "이미지 내의 가장자리 검출을 위한 알고리즘이다.   \n",
+    "픽셀의 그레이디언트의 상위 임곗값과 하위 임곗값을 사용해 가장자리를 검출한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-윤곽선(Contours) 검출   \n",
+    "이미지 내의 윤곽 검출을 위한 알고리즘이다.   \n",
+    "동일한 색상이나 비슷한 강도를 가진 역속한 픽셀을 묶어 처리한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-직선(Line) 검출   \n",
+    "이미지의 모든 점에 대한 교차점을 추적한다.   \n",
+    "교차점의 수가 임곗값보다 높을 경우 매개변수가 있는 행으로 간주한다.   \n",
+    "즉, 교차점의 교차 수를 찾아 선을 검출하며 교차 횟수가 많을수록 선이 더 많은 픽셀을 갖게 된다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-원(Circle) 검출   \n",
+    "이미지에서 방사형 대칭성이 높은 객체를 효과적으로 검출한다.   \n",
+    "특징점을 파라미터 공간으로 매핑해서 검출하며, 가장자리에 그레이디언트 방법을 적용해 원의 중심점 (a, b)를 2D 히스토그램으로 표현해 검출한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. 가장자리 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q1. 미분 형태의 가장자리 유형은 어떤 것들이 있나요? 가장자리를 검출하는 방식에는 어떤 것들이 있는지 말해주세요."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Step Edge, Line Edge, Ramp Edge, Roof Edge   \n",
+    "\n",
+    "-Step Edge: 픽셀의 밝기 값이 급격하게 변하는 부분   \n",
+    "-Line Edge: 픽셀의 값이 급격하게 변한 뒤 다시 원래의 값으로 되돌아 온다.   \n",
+    "-Ramp Edge: 노이즈가 제거된 뒤의 Step Edge   \n",
+    "-Roof Edge: 노이즈가 제거된 뒤의 Line Edge"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "가장자리를 검출하는 방식   \n",
+    "\n",
+    "-소벨 미분(Sobel derivative)   \n",
+    "-샤르 필터(Scharr filter)   \n",
+    "-라플라시안(Laplacian)   \n",
+    "-케니 엣지(Canny Edge)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Python OpenCV의 소벨 연산 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dst = cv2.Sobel(\n",
+    "    src,\n",
+    "    ddepth,\n",
+    "    dx,\n",
+    "    dy,\n",
+    "    ksize = None,\n",
+    "    scale = None,\n",
+    "    delta = None,\n",
+    "    borderType = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Python OpenCV의 샤르 연산 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dst = cv2.Scharr(\n",
+    "    src,\n",
+    "    ddepth,\n",
+    "    dx,\n",
+    "    dy,\n",
+    "    scale = None,\n",
+    "    delta = None,\n",
+    "    borderType = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q2. 소벨 미분과 샤르 필터의 차이점은 무엇인가요?"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-샤르 필터는 소벨 연산 함수와 매개변수의 의미와 활용 방식이 동일하며,   \n",
+    "차이점은 샤르 필터는 3 x 3 크기만 지원해서 커널의 크기(ksize)는 사용하지 않는다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 라플라시안"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q3. python opencv의 라플라시안 연산 함수를 확인하고, 소벨 연산과의 차이점을 적어보세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dst = cv2.Laplacian(\n",
+    "    src,\n",
+    "    ddepth,\n",
+    "    ksize,\n",
+    "    scale = None,\n",
+    "    delta = None,\n",
+    "    borderType = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "소벨 연산과의 차이점은 커널의 크기(ksize)가 소벨 미분 거널을 의미하며 2차 미분의 계산을 위해 샘플링하는 영역의 크기가 다르다는 것이다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 케니 엣지"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q4. 캐니 엣지 알고리즘은 어떻게 동작합니까? 순서대로 적어보세요."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-케니 엣지 알고리즘이 동작하는 순서   \n",
+    "\n",
+    "1. 노이즈 제거를 위해 가우시안 필터를 사용해 흐림 효과를 적용   \n",
+    "2. 기울기(Gradient) 값이 높은 지점을 검출(소벨 마스크 적용)   \n",
+    "3. 최댓값이 아닌 픽셀의 값을 0으로 변경(명백하게 가장자리가 아닌 값을 제거)   \n",
+    "4. 히스테리시스 임곗값(hysteresis threshold) 적용"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### python opencv의 케니 엣지 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dst = cv2.Canny(\n",
+    "    src,\n",
+    "    threshold1,\n",
+    "    threshold2,\n",
+    "    apertureSize = None,\n",
+    "    L2gradient = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q5. 이미지를 하나 불러와, 예제 7.2(python opencv에서의 캐니 엣지)를 수행하고 결과를 확인해보세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import cv2\n",
+    "\n",
+    "src = cv2.imread(\"book.jpg\", cv2.IMREAD_GRAYSCALE)\n",
+    "\n",
+    "dst = cv2.Canny(src, 100, 200, apertureSize = 3, L2gradient = True)\n",
+    "\n",
+    "cv2.imshow(\"dst\", dst)\n",
+    "cv2.waitKey(0)\n",
+    "cv2.destroyAllWindows()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "   "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. 윤곽선 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-윤곽선(Contour) 검출 알고리즘은 전처리가 진행된 이미지에서 가장자리로 검출된 픽셀을 대상으로 세그먼테이션(Segmentation) 작업을 진행한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 계층 구조"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q6. 계층 구조는 기본적으로 어떤 형태를 띱니까? 계층 구조의 내용을 정리하여 설명해주세요."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-윤곽선 계층 구조에는 세그먼테이션이 어떻게 분류됐는가에 대한 정보가 담겨 있다.   \n",
+    "-계층 구조는 기본적으로 트리(Tree) 구조의 형태를 띤다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q7. python opencv의 윤곽선 검출 함수에 대해 적어보고, 각각의 요소가 무슨 역할을 하는지 설명해주세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "contours, hierarchy = cv2.findContours(\n",
+    "    image,\n",
+    "    mode,\n",
+    "    method,\n",
+    "    offset = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-mode(검색 방법): 윤곽선을 검출해 어떤 계층 구조의 형태를 사용할지 설정   \n",
+    "-method(근사 방법): 윤곽점의 표시 방법을 설정. 근사 방법에 따라 검출된 윤곽선(contours)에 포함될 좌표의 수나 정교함의 수준이 달라진다.   \n",
+    "-offset(오프셋): 반환된 윤곽점들의 좌푯값에 이동할 값을 설정\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선 그리기"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cv2.drawContours(\n",
+    "    image,\n",
+    "    contours,\n",
+    "    contourIdx,\n",
+    "    color,\n",
+    "    thickness = None,\n",
+    "    lineType = None,\n",
+    "    hierarchy = None,\n",
+    "    maxLevel = None,\n",
+    "    offset = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q10. 예제 7.4(python opencv에서의 윤곽선 검출)를 수행해보세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import cv2\n",
+    "\n",
+    "src = cv2.imread(\"chess.png\")\n",
+    "dst = src.copy()\n",
+    "\n",
+    "kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))\n",
+    "\n",
+    "gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)\n",
+    "ret, binary = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY)\n",
+    "morp = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations = 2)\n",
+    "image = cv2.bitwise_not(morp)\n",
+    "\n",
+    "contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)\n",
+    "cv2.drawContours(dst, contours, -1, (0, 0, 255), 3)\n",
+    "for i in range(len(contours)):\n",
+    "    cv2.putText(dst, str(i), tuple(contours[i][0][0]), cv2.FONT_HERSHEY_COMPLEX, 1.3, (255, 0, 0), 1)\n",
+    "    print(i, hierarchy[0][i])\n",
+    "    \n",
+    "cv2.imshow(\"dst\", dst)\n",
+    "cv2.waitKey(0)\n",
+    "cv2.destroyAllWindows()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "  \n",
+    "  "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. 다각형 근사"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-다각형 근사는 검출된 윤곽선의 형상을 분석할 때 정점의 수가 적은 다각형으로 표현하도록 다각형 곡선을 근사하는 방법   \n",
+    "-윤곽선 검출 함수에서 반환된 윤곽선 정보를 활용해 윤곽점의 개수를 축소한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q12. 예제 7.6(python opencv에서의 다각형 근사)를 수행해보세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import cv2\n",
+    "\n",
+    "src = cv2.imread(\"chess.png\")\n",
+    "dst = src.copy()\n",
+    "\n",
+    "kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))\n",
+    "\n",
+    "gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)\n",
+    "ret, binary = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY)\n",
+    "morp = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations = 2)\n",
+    "image = cv2.bitwise_not(morp)\n",
+    "\n",
+    "contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)\n",
+    "\n",
+    "for i in contours:\n",
+    "    perimeter = cv2.arcLength(i, True)\n",
+    "    epsilon = perimeter * 0.05\n",
+    "    approx = cv2.approxPolyDP(i, epsilon, True)\n",
+    "    cv2.drawContours(dst, [approx], 0, (0, 0, 255), 3)\n",
+    "    for j in approx:\n",
+    "        cv2.circle(dst, tuple(j[0]), 3, (255, 0, 0), -1)\n",
+    "        \n",
+    "cv2.imshow(\"dst\", dst)\n",
+    "cv2.waitKey(0)\n",
+    "cv2.destroyAllWindows()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 길이 계산"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "length = cv2.arcLength(\n",
+    "    curve,\n",
+    "    closed\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 면적 계산"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "area = cv2.contourArea(\n",
+    "    contour,\n",
+    "    oriented\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 경계 사각형"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "boundrect = cv2.boundingRect(\n",
+    "    curve\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 최소 면적 사각형"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rect = cv2.minAreaRect(\n",
+    "    points\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 최소 면적 원"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "center, radius = cv2.minEnclosingCircle(\n",
+    "    points\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 타원 피팅"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ellipse = cv2.fitcellipse(\n",
+    "    points\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 볼록 껍질"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "hull = cv2.convexHull(\n",
+    "    points,\n",
+    "    clockwise = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q13. 스크랜스키 알고리즘이란 무엇인가요? 위의 윤곽선 관련 함수 중 특히 어디에 쓰이나요?"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-스크랜스키(Sklansky) 알고리즘은 윤곽점에서 경계 사각형의 정점(Vertex)을 검출한다.   \n",
+    "-경계면을 둘러싸는 다각형은 경계 사각형 내부에 포함되며, 해당 정점을 볼록점으로 사용한다.   "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 볼록성 시험"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "convex = cv2.inContourConvex(\n",
+    "    contour\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 윤곽선의 모멘트"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "moments = cv2.moments(\n",
+    "    array,\n",
+    "    binaryImage = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4. 코너 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-코너 검출은 입력 이미지상에서 코너점을 검출하는 알고리즘이다.   \n",
+    "-다각형의 꼭짓점을 검출하는 것으로 이해하기 쉬운데 정확하게는 트래킹(Tracking)하기 좋은 지점(특징)을 코너라 한다.   \n",
+    "-다각형 꼭짓점은 트래킹하기 좋은 지점이 되어 다각형의 꼭짓점을 검출하는 데도 활용할 수 있다.   \n",
+    "-만약 다각형의 꼭짓점이 트래킹하기 좋은 지점이 아니라면 검출하기 어렵다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q14.python opencv의 코너 검출 함수를 적어보세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "corners = cv2.goodFeaturesToTrack(\n",
+    "    image,\n",
+    "    maxCorners,\n",
+    "    qualityLevel,\n",
+    "    minDistance,\n",
+    "    mask = None,\n",
+    "    blockSize = None,\n",
+    "    useHarrisDetector = None,\n",
+    "    k = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-maxCorners(코너 최댓값): 검출할 최대 코너의 수를 제한한다. 0 이하의 값을 사용하면 최대 코너의 수를 제한하지 않으며, 검출한 최대 코너의 수보다 더 많은 코너의 수가 검출된 경우, 코너 강도가 약한 코너점을 반환하지 않는다.  \n",
+    "\n",
+    "-qualityLevel(코너 품질): 반환할 코너의 최소 품질을 설정 한다. 코너 품질은 0.0 ~ 1.0 사이의 값으로 할당할 수 있으며, 일반적으로 0.01 ~ 0.10 사이의 값을 사용한다.   \n",
+    "\n",
+    "-minDistance(최소 거리): 검출된 코너들의 최소 근접 거리를 나타내며, 설정된 최소 거리 이상의 값만 검출한다.   \n",
+    "\n",
+    "-mask(마스크): 입력 이미지와 같은 차원을 갖는 이미지(배열)이며, 마스크의 값이 0인 곳은 코너를 계산하지 않는다.   \n",
+    "\n",
+    "-blockSize(블록 크기): 코너를 계산할 때 고려하는 코너 주변 영역의 크기를 나타낸다.   \n",
+    "\n",
+    "-useHarrisDetector(해리스 코너 검출기): 코너 강도를 계산하는 데 사용할 알고리즘을 나타낸다.   \n",
+    "\n",
+    "-k(해리스 측정 계수): 해리스 알고리즘을 사용할 때 할당하며 해리스 대각합의 감도 계수를 의미한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 코너 픽셀 세밀화 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cv2.cornerSubPix(\n",
+    "    image,\n",
+    "    corners,\n",
+    "    winSize,\n",
+    "    zeroZone,\n",
+    "    criteria\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q16. 예제 7.8(python opencv에서의 코너 검출 및 코너 픽셀 세밀화)를 수행해보세요. (사람 형태의 이미지를 권장합니다.)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import cv2\n",
+    "\n",
+    "src = cv2.imread(\"dummy.jpg\")\n",
+    "dst = src.copy()\n",
+    "\n",
+    "gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)\n",
+    "corners = cv2.goodFeaturesToTrack(gray, 100, 0.01, 5, blockSize = 3, useHarrisDetector = True, k = 0.03)\n",
+    "\n",
+    "for i in corners:\n",
+    "    cv2.circle(dst, tuple(i[0]), 3, (255, 0, 0), 5)\n",
+    "    \n",
+    "criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 30, 0.001)\n",
+    "cv2.cornerSubPix(gray, corners, (5, 5), (-1, -1), criteria)\n",
+    "\n",
+    "for i in corners:\n",
+    "    cv2.circle(dst, tuple(i[0]), 3, (0, 0, 255), 5)\n",
+    "    \n",
+    "cv2.imshow(\"dst\", dst)\n",
+    "cv2.waitKey(0)\n",
+    "cv2.destroyAllWindows()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "  \n",
+    "  \n",
+    "  "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 5. 직선 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-직선 검출은 이미지 내에서 선형적인 부분을 검출하기 위해 사용한다.   \n",
+    "-직선 검출 알고리즘은 허프 변환(Hough Transform)을 활용해 직선을 검출한다.   \n",
+    "-허프 변환은 이미지에서 직선을 찾는 가장 보편적인 알고리즘이다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 허프 변환 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "lines = cv2.HoughLines(\n",
+    "    image,\n",
+    "    rho,\n",
+    "    theta,\n",
+    "    threshold,\n",
+    "    srn = None,\n",
+    "    stn = None,\n",
+    "    min_theta = None,\n",
+    "    max_theta = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 확률 허프 변환 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "lines = cv2.HoughLinesP(\n",
+    "    image,\n",
+    "    rho,\n",
+    "    theta,\n",
+    "    threshold,\n",
+    "    minLineLength = None,\n",
+    "    maxLineGap = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q19. 예제 7.10(python opencv에서의 허프 변환)을 수행해보세요."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import cv2\n",
+    "\n",
+    "src = cv2.imread(\"card.jpg\")\n",
+    "dst = src.copy()\n",
+    "\n",
+    "kernel  = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3), (-1, -1))\n",
+    "\n",
+    "gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)\n",
+    "_, binary = cv2.threshold(gray, 150,255, cv2.THRESH_BINARY)\n",
+    "morp = cv2.dilate(binary, kernel)\n",
+    "morp = cv2.erode(morp, kernel, iterations = 3)\n",
+    "morp = cv2.dilate(morp, kernel, iterations = 2)\n",
+    "canny = cv2.Canny(morp, 0, 0, apertureSize = 3, L2gradient = True)\n",
+    "\n",
+    "lines = cv2.HoughLines(canny, 1, np.pi/180, 140, srn = 50, stn = 10, min_theta = 0, max_theta = np.pi/2)\n",
+    "\n",
+    "for i in lines:\n",
+    "    rho, theta = i[0][0], i[0][1]\n",
+    "    a, b = np.cos(theta), np.sin(theta)\n",
+    "    x0, y0 = a*rho, b*rho\n",
+    "    \n",
+    "    scale = src.shape[0] + src.shape[1]\n",
+    "    \n",
+    "    x1 = int(x0 + scale * -b)\n",
+    "    y1 = int(y0 + scale * a)\n",
+    "    x2 = int(x0 - scale * -b)\n",
+    "    y2 = int(y0 - scale * a)\n",
+    "    \n",
+    "    cv2.line(dst, (x1, y1), (x2, y2), (0, 255, 255), 2)\n",
+    "    cv2.circle(dst, (x0, y0), 3, (255, 0, 0), 5, cv2.FILLED)\n",
+    "    \n",
+    "cv2.imshow(\"dst\", dst)\n",
+    "cv2.waitKey(0)\n",
+    "cv2.destroyAllWindows()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "   \n",
+    "   "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 6. 원 검출"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "-원 검출 알고리즘도 허프 변환 알고리즘 중 하나인 허프 원 변환(Hough Circle Transform) 알고리즘을 활용해 원을 검출한다.   \n",
+    "-허프 원 변환 알고리즘은 허프 선 변환 알고리즘과 비슷한 방식으로 동작한다."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 허프 원 변환 함수"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "circles = cv2.HoughCircles(\n",
+    "    image,\n",
+    "    method,\n",
+    "    dp,\n",
+    "    minDist,\n",
+    "    param1 = None,\n",
+    "    param2 = None,\n",
+    "    minRadius = None,\n",
+    "    maxRadius = None\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Q21. 예제 7.12(python opencv에서의 허프 원 변환)을 수행하여 확인해보세요.(원이 많은 이미지를 사용해보세요.)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import cv2\n",
+    "\n",
+    "src = cv2.imread(\"colorball.png\")\n",
+    "dst = src.copy()\n",
+    "\n",
+    "image = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)\n",
+    "\n",
+    "circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 100, param1 = 100, param2 = 35, minRadius = 80, maxRadius = 120)\n",
+    "\n",
+    "for i in circles[0]:\n",
+    "    cv2.circle(dst, (i[0], i[1]), int(i[2]), (255, 255, 255), 5)\n",
+    "    \n",
+    "cv2.imshow(\"dst\", dst)\n",
+    "cv2.waitKey(0)\n",
+    "cv2.destroyAllWindows()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "aiffel",
+   "language": "python",
+   "name": "aiffel"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.10"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
